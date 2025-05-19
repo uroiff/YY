@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     	Harmony Box Auto-Purchase
 // @namespace	http://tampermonkey.net/
-// @version  	2.0
+// @version  	3.0
 // @description  Automatically find and purchase Harmony Boxes above a specified price threshold
 // @author   	You
 // @match    	*://*.yiya.gg/*
@@ -12,8 +12,11 @@
     'use strict';
 
     // Configuration
-    let MIN_PRICE_THRESHOLD = 200.00; // Default minimum price threshold
+    let MIN_PRICE_THRESHOLD = 150.00; // Default minimum price threshold
+    let MAX_PRICE_THRESHOLD = 500.00; // Default maximum price threshold
+    let MAX_CAPITAL = 1000.00; // Default maximum capital after 3 boxes
     const CHECK_INTERVAL = 500; // How often to check for items (milliseconds)
+    const MAX_BOXES_TO_ADD = 3; // Maximum number of boxes to add to cart
 
     // Global variables
     let attemptingPurchase = false;
@@ -22,17 +25,31 @@
     let checkInterval = null; // Store interval ID for start/stop functionality
     let startTime = null; // To track when the bot was started
     let timerInterval = null; // For updating the timer display
+    let boxesAddedToCart = 0; // Counter for boxes added to cart
+    let currentCapitalSpent = 0; // Track how much capital has been spent
 
     // Save settings to localStorage
     function saveSettings() {
-        localStorage.setItem('harmonyBotThreshold', MIN_PRICE_THRESHOLD);
+        localStorage.setItem('harmonyBotMinThreshold', MIN_PRICE_THRESHOLD);
+        localStorage.setItem('harmonyBotMaxThreshold', MAX_PRICE_THRESHOLD);
+        localStorage.setItem('harmonyBotMaxCapital', MAX_CAPITAL);
     }
 
     // Load settings from localStorage
     function loadSettings() {
-        const savedThreshold = localStorage.getItem('harmonyBotThreshold');
-        if (savedThreshold !== null) {
-            MIN_PRICE_THRESHOLD = parseFloat(savedThreshold);
+        const savedMinThreshold = localStorage.getItem('harmonyBotMinThreshold');
+        if (savedMinThreshold !== null) {
+            MIN_PRICE_THRESHOLD = parseFloat(savedMinThreshold);
+        }
+
+        const savedMaxThreshold = localStorage.getItem('harmonyBotMaxThreshold');
+        if (savedMaxThreshold !== null) {
+            MAX_PRICE_THRESHOLD = parseFloat(savedMaxThreshold);
+        }
+
+        const savedMaxCapital = localStorage.getItem('harmonyBotMaxCapital');
+        if (savedMaxCapital !== null) {
+            MAX_CAPITAL = parseFloat(savedMaxCapital);
         }
     }
 
@@ -41,11 +58,19 @@
         // Skip if we're already in the process of purchasing or if bot is inactive
         if (attemptingPurchase || !botActive) return;
 
+        // Check if we've already added the maximum number of boxes
+        if (boxesAddedToCart >= MAX_BOXES_TO_ADD) {
+            console.log(`Maximum number of boxes (${MAX_BOXES_TO_ADD}) already added to cart`);
+            updateStatus(`Maximum boxes (${MAX_BOXES_TO_ADD}) added to cart`);
+            stopBot(); // Auto-stop the bot
+            return;
+        }
+
         // Reset popup retry counter whenever we start a new purchase attempt
         popupRetryCount = 0;
 
         console.log("Scanning for Harmony boxes above threshold...");
-        updateStatus(`Scanning for boxes above ${MIN_PRICE_THRESHOLD}...`);
+        updateStatus(`Scanning for boxes: ${MIN_PRICE_THRESHOLD} - ${MAX_PRICE_THRESHOLD}`);
 
         // Step 1: Find all price elements on the page
         const priceElements = document.querySelectorAll('.text-brand-primary.text-heading-14-bold');
@@ -56,7 +81,7 @@
             return;
         }
 
-        // Find the maximum price above threshold and its associated element
+        // Find the maximum price above threshold but below max threshold
         let maxPrice = 0;
         let maxPriceElement = null;
 
@@ -64,20 +89,26 @@
             const priceText = element.textContent.trim();
             const price = parseFloat(priceText);
 
-            if (!isNaN(price) && price > MIN_PRICE_THRESHOLD && price > maxPrice) {
+            // Check if price is within our desired range and better than previous found
+            if (!isNaN(price) &&
+                price >= MIN_PRICE_THRESHOLD &&
+                price <= MAX_PRICE_THRESHOLD &&
+                price > maxPrice &&
+                (currentCapitalSpent + price) <= MAX_CAPITAL) {
                 maxPrice = price;
                 maxPriceElement = element;
             }
         });
 
         if (!maxPriceElement) {
-            console.log(`No Harmony box found above the threshold of ${MIN_PRICE_THRESHOLD}`);
-            updateStatus(`No box found above ${MIN_PRICE_THRESHOLD}`);
+            const capitalRemaining = MAX_CAPITAL - currentCapitalSpent;
+            console.log(`No suitable box found in range ${MIN_PRICE_THRESHOLD}-${MAX_PRICE_THRESHOLD} with capital limit ${capitalRemaining}`);
+            updateStatus(`No suitable box found (Capital left: ${capitalRemaining.toFixed(2)})`);
             return;
         }
 
         console.log(`Found Harmony box with price: ${maxPrice}`);
-        updateStatus(`Found box with price: ${maxPrice}`);
+        updateStatus(`Found box: ${maxPrice} (${boxesAddedToCart + 1}/${MAX_BOXES_TO_ADD})`);
 
         // Find the closest "Add to Cart" button to this price element
         const cardItem = maxPriceElement.closest('.card-item-buy');
@@ -101,11 +132,11 @@
         addToCartButton.click();
 
         // Step 2: Handle the popup that appears after clicking Add to Cart
-        setTimeout(handlePopup, 300);
+        setTimeout(() => handlePopup(maxPrice), 300);
     }
 
     // Function to handle the popup after clicking Add to Cart
-    function handlePopup() {
+    function handlePopup(price) {
         // Find the Add to Cart button in the popup
         const popupAddToCartButton = document.querySelector('.popup-buy-cart--content .btn-common--text');
 
@@ -122,7 +153,7 @@
                 return; // Return to the main loop instead of retrying
             } else {
                 // Retry if less than 2 attempts
-                setTimeout(handlePopup, 300);
+                setTimeout(() => handlePopup(price), 300);
                 return;
             }
         }
@@ -135,12 +166,35 @@
         updateStatus("Clicking popup Add to Cart button...");
         popupAddToCartButton.click();
 
+        // Update counters on successful purchase
+        boxesAddedToCart++;
+        currentCapitalSpent += price;
+
+        // Update capital display
+        updateCapitalDisplay();
+
         // Reset the purchase attempt flag after a short delay
         setTimeout(() => {
             attemptingPurchase = false;
-            console.log("Purchase cycle completed, waiting for next scan");
-            updateStatus("Purchase cycle completed, waiting for next scan");
-        }, 2000);
+            console.log(`Purchase cycle completed (${boxesAddedToCart}/${MAX_BOXES_TO_ADD}), capital used: ${currentCapitalSpent.toFixed(2)}`);
+            updateStatus(`Box ${boxesAddedToCart}/${MAX_BOXES_TO_ADD} added (Capital used: ${currentCapitalSpent.toFixed(2)})`);
+
+            // If we've reached the max boxes, stop the bot
+            if (boxesAddedToCart >= MAX_BOXES_TO_ADD) {
+                console.log("Maximum number of boxes added to cart. Stopping bot.");
+                updateStatus(`Maximum boxes (${MAX_BOXES_TO_ADD}) added. Stopping.`);
+                stopBot();
+            }
+        }, 1000);
+    }
+
+    // Update the capital display
+    function updateCapitalDisplay() {
+        const capitalDisplay = document.getElementById('harmony-bot-capital');
+        if (capitalDisplay) {
+            const capitalRemaining = MAX_CAPITAL - currentCapitalSpent;
+            capitalDisplay.textContent = `Capital: ${currentCapitalSpent.toFixed(2)} / ${MAX_CAPITAL.toFixed(2)} (${capitalRemaining.toFixed(2)} remaining)`;
+        }
     }
 
     // Function to update the status display
@@ -171,6 +225,11 @@
     // Function to start the bot
     function startBot() {
         if (botActive) return;
+
+        // Reset counters when starting
+        boxesAddedToCart = 0;
+        currentCapitalSpent = 0;
+        updateCapitalDisplay();
 
         botActive = true;
         startTime = new Date();
@@ -208,22 +267,54 @@
         updateStatus("Bot stopped");
     }
 
-    // Function to save the threshold value
-    function saveThreshold() {
-        const thresholdInput = document.getElementById('harmony-bot-threshold');
-        if (!thresholdInput) return;
+    // Function to save the settings values
+    function saveThresholds() {
+        const minThresholdInput = document.getElementById('harmony-bot-min-threshold');
+        const maxThresholdInput = document.getElementById('harmony-bot-max-threshold');
+        const maxCapitalInput = document.getElementById('harmony-bot-max-capital');
 
-        const newThreshold = parseFloat(thresholdInput.value);
-        if (!isNaN(newThreshold) && newThreshold > 0) {
-            MIN_PRICE_THRESHOLD = newThreshold;
+        if (!minThresholdInput || !maxThresholdInput || !maxCapitalInput) return;
+
+        const newMinThreshold = parseFloat(minThresholdInput.value);
+        const newMaxThreshold = parseFloat(maxThresholdInput.value);
+        const newMaxCapital = parseFloat(maxCapitalInput.value);
+
+        let isValid = true;
+        let errorMessage = "";
+
+        // Validate min threshold
+        if (isNaN(newMinThreshold) || newMinThreshold <= 0) {
+            isValid = false;
+            errorMessage = "Invalid minimum price value";
+        }
+
+        // Validate max threshold
+        else if (isNaN(newMaxThreshold) || newMaxThreshold <= newMinThreshold) {
+            isValid = false;
+            errorMessage = "Max price must be greater than min price";
+        }
+
+        // Validate max capital
+        else if (isNaN(newMaxCapital) || newMaxCapital <= 0) {
+            isValid = false;
+            errorMessage = "Invalid maximum capital value";
+        }
+
+        if (isValid) {
+            MIN_PRICE_THRESHOLD = newMinThreshold;
+            MAX_PRICE_THRESHOLD = newMaxThreshold;
+            MAX_CAPITAL = newMaxCapital;
             saveSettings();
-            console.log(`Threshold updated to ${MIN_PRICE_THRESHOLD}`);
-            updateStatus(`Threshold updated to ${MIN_PRICE_THRESHOLD}`);
+            console.log(`Settings updated: Min=${MIN_PRICE_THRESHOLD}, Max=${MAX_PRICE_THRESHOLD}, Capital=${MAX_CAPITAL}`);
+            updateStatus(`Settings saved successfully`);
+            updateCapitalDisplay();
         } else {
-            console.log("Invalid threshold value");
-            updateStatus("Invalid threshold value");
-            // Reset input to current value
-            thresholdInput.value = MIN_PRICE_THRESHOLD;
+            console.log(errorMessage);
+            updateStatus(errorMessage);
+            // Reset inputs to current values
+            minThresholdInput.value = MIN_PRICE_THRESHOLD;
+            maxThresholdInput.value = MAX_PRICE_THRESHOLD;
+            maxCapitalInput.value = MAX_CAPITAL;
         }
     }
 
@@ -240,7 +331,7 @@
         controlPanel.style.padding = '15px';
         controlPanel.style.borderRadius = '8px';
         controlPanel.style.zIndex = '9999';
-        controlPanel.style.width = '250px';
+        controlPanel.style.width = '280px';
         controlPanel.style.fontFamily = 'Arial, sans-serif';
         controlPanel.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
 
@@ -248,44 +339,110 @@
         const title = document.createElement('div');
         title.style.fontWeight = 'bold';
         title.style.fontSize = '16px';
-        title.style.marginBottom = '10px';
+        title.style.marginBottom = '15px';
         title.style.textAlign = 'center';
         title.textContent = 'YiYa AutoCart';
         controlPanel.appendChild(title);
 
-        // Create threshold input section
-        const thresholdSection = document.createElement('div');
-        thresholdSection.style.marginBottom = '15px';
+        // Create min threshold input section
+        const minThresholdSection = document.createElement('div');
+        minThresholdSection.style.marginBottom = '10px';
 
-        const thresholdLabel = document.createElement('label');
-        thresholdLabel.textContent = 'Price';
-        thresholdLabel.style.display = 'block';
-        thresholdLabel.style.marginBottom = '5px';
-        thresholdLabel.style.color = '#ffffff';
-        thresholdSection.appendChild(thresholdLabel);
+        const minThresholdLabel = document.createElement('label');
+        minThresholdLabel.textContent = 'Min Price';
+        minThresholdLabel.style.display = 'block';
+        minThresholdLabel.style.marginBottom = '5px';
+        minThresholdLabel.style.color = '#ffffff';
+        minThresholdSection.appendChild(minThresholdLabel);
 
-        // Create input field
-        const thresholdInput = document.createElement('input');
-        thresholdInput.id = 'harmony-bot-threshold';
-        thresholdInput.type = 'number';
-        thresholdInput.min = '0';
-        thresholdInput.step = '0.01';
-        thresholdInput.value = MIN_PRICE_THRESHOLD;
-        thresholdInput.style.width = '100%';
-        thresholdInput.style.padding = '5px';
-        thresholdInput.style.borderRadius = '4px';
-        thresholdInput.style.border = '1px solid #ccc';
-        thresholdInput.style.backgroundColor = '#ffffff';
-        thresholdInput.style.color = '#000000';
-        thresholdInput.style.fontWeight = 'bold';
-        thresholdInput.style.fontSize = '16px';
-        thresholdInput.style.boxSizing = 'border-box';
-        thresholdInput.style.marginBottom = '10px';
-        thresholdSection.appendChild(thresholdInput);
+        // Create min threshold input field
+        const minThresholdInput = document.createElement('input');
+        minThresholdInput.id = 'harmony-bot-min-threshold';
+        minThresholdInput.type = 'number';
+        minThresholdInput.min = '0';
+        minThresholdInput.step = '0.01';
+        minThresholdInput.value = MIN_PRICE_THRESHOLD;
+        minThresholdInput.style.width = '100%';
+        minThresholdInput.style.padding = '5px';
+        minThresholdInput.style.borderRadius = '4px';
+        minThresholdInput.style.border = '1px solid #ccc';
+        minThresholdInput.style.backgroundColor = '#ffffff';
+        minThresholdInput.style.color = '#000000';
+        minThresholdInput.style.fontWeight = 'bold';
+        minThresholdInput.style.fontSize = '16px';
+        minThresholdInput.style.boxSizing = 'border-box';
+        minThresholdInput.style.marginBottom = '10px';
+        minThresholdSection.appendChild(minThresholdInput);
 
-        // Create save button below input field
+        controlPanel.appendChild(minThresholdSection);
+
+        // Create max threshold input section
+        const maxThresholdSection = document.createElement('div');
+        maxThresholdSection.style.marginBottom = '10px';
+
+        const maxThresholdLabel = document.createElement('label');
+        maxThresholdLabel.textContent = 'Max Price';
+        maxThresholdLabel.style.display = 'block';
+        maxThresholdLabel.style.marginBottom = '5px';
+        maxThresholdLabel.style.color = '#ffffff';
+        maxThresholdSection.appendChild(maxThresholdLabel);
+
+        // Create max threshold input field
+        const maxThresholdInput = document.createElement('input');
+        maxThresholdInput.id = 'harmony-bot-max-threshold';
+        maxThresholdInput.type = 'number';
+        maxThresholdInput.min = '0';
+        maxThresholdInput.step = '0.01';
+        maxThresholdInput.value = MAX_PRICE_THRESHOLD;
+        maxThresholdInput.style.width = '100%';
+        maxThresholdInput.style.padding = '5px';
+        maxThresholdInput.style.borderRadius = '4px';
+        maxThresholdInput.style.border = '1px solid #ccc';
+        maxThresholdInput.style.backgroundColor = '#ffffff';
+        maxThresholdInput.style.color = '#000000';
+        maxThresholdInput.style.fontWeight = 'bold';
+        maxThresholdInput.style.fontSize = '16px';
+        maxThresholdInput.style.boxSizing = 'border-box';
+        maxThresholdInput.style.marginBottom = '10px';
+        maxThresholdSection.appendChild(maxThresholdInput);
+
+        controlPanel.appendChild(maxThresholdSection);
+
+        // Create max capital input section
+        const maxCapitalSection = document.createElement('div');
+        maxCapitalSection.style.marginBottom = '10px';
+
+        const maxCapitalLabel = document.createElement('label');
+        maxCapitalLabel.textContent = 'Max Capital (3 boxes)';
+        maxCapitalLabel.style.display = 'block';
+        maxCapitalLabel.style.marginBottom = '5px';
+        maxCapitalLabel.style.color = '#ffffff';
+        maxCapitalSection.appendChild(maxCapitalLabel);
+
+        // Create max capital input field
+        const maxCapitalInput = document.createElement('input');
+        maxCapitalInput.id = 'harmony-bot-max-capital';
+        maxCapitalInput.type = 'number';
+        maxCapitalInput.min = '0';
+        maxCapitalInput.step = '0.01';
+        maxCapitalInput.value = MAX_CAPITAL;
+        maxCapitalInput.style.width = '100%';
+        maxCapitalInput.style.padding = '5px';
+        maxCapitalInput.style.borderRadius = '4px';
+        maxCapitalInput.style.border = '1px solid #ccc';
+        maxCapitalInput.style.backgroundColor = '#ffffff';
+        maxCapitalInput.style.color = '#000000';
+        maxCapitalInput.style.fontWeight = 'bold';
+        maxCapitalInput.style.fontSize = '16px';
+        maxCapitalInput.style.boxSizing = 'border-box';
+        maxCapitalInput.style.marginBottom = '10px';
+        maxCapitalSection.appendChild(maxCapitalInput);
+
+        controlPanel.appendChild(maxCapitalSection);
+
+        // Create save button
         const saveButton = document.createElement('button');
-        saveButton.textContent = 'Save';
+        saveButton.textContent = 'Save Settings';
         saveButton.style.width = '100%';
         saveButton.style.padding = '8px';
         saveButton.style.backgroundColor = '#2196F3'; // Blue color
@@ -294,10 +451,8 @@
         saveButton.style.borderRadius = '4px';
         saveButton.style.cursor = 'pointer';
         saveButton.style.marginBottom = '15px';
-        saveButton.addEventListener('click', saveThreshold);
-        thresholdSection.appendChild(saveButton);
-
-        controlPanel.appendChild(thresholdSection);
+        saveButton.addEventListener('click', saveThresholds);
+        controlPanel.appendChild(saveButton);
 
         // Create start/stop buttons
         const buttonSection = document.createElement('div');
@@ -334,6 +489,15 @@
         buttonSection.appendChild(stopButton);
 
         controlPanel.appendChild(buttonSection);
+
+        // Create capital display
+        const capitalDisplay = document.createElement('div');
+        capitalDisplay.id = 'harmony-bot-capital';
+        capitalDisplay.textContent = `Capital: 0.00 / ${MAX_CAPITAL.toFixed(2)} (${MAX_CAPITAL.toFixed(2)} remaining)`;
+        capitalDisplay.style.marginBottom = '10px';
+        capitalDisplay.style.textAlign = 'center';
+        capitalDisplay.style.fontSize = '14px';
+        controlPanel.appendChild(capitalDisplay);
 
         // Create timer display
         const timer = document.createElement('div');
@@ -422,7 +586,7 @@
         // Create the control panel
         createControlPanel();
 
-        console.log(`Default threshold set to ${MIN_PRICE_THRESHOLD}`);
+        console.log(`Settings loaded: Min=${MIN_PRICE_THRESHOLD}, Max=${MAX_PRICE_THRESHOLD}, Capital=${MAX_CAPITAL}`);
     }
 
     // Wait for the page to fully load before initializing
