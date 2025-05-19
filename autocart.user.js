@@ -6,6 +6,14 @@
 // @author   	You
 // @match    	*://*.yiya.gg/*
 // @grant    	none
+// @grant       GM_addStyle
+// @grant       GM_setValue
+// @grant       GM_getValue
+// @downloadURL https://github.com/trungduy17/telebot/raw/main/autocart.user.js
+// @updateURL   https://github.com/trungduy17/telebot/raw/main/autocart.user.js
+// @grant       GM.xmlHttpRequest
+// @grant       GM.registerMenuCommand
+// @run-at       ocument-start
 // ==/UserScript==
 
 (function() {
