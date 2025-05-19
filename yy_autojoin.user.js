@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yiya.gg Auto Join Button Clicker with Time Windows
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      3.0
 // @description  Automatically finds and clicks "Join Now" button on yiya.gg during configured time windows
 // @author       You
 // @match        *://*.yiya.gg/*
@@ -22,8 +22,8 @@
     GM_addStyle(`
         #yiya-auto-join-panel {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            bottom: 20px;
+            left: 20px;
             width: 300px;
             background-color: #242424;
             color: white;
