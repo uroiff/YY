@@ -20,7 +20,7 @@
     'use strict';
 
     // Configuration
-    let MIN_PRICE_THRESHOLD = 150.00; // Default minimum price threshold
+    let MIN_PRICE_THRESHOLD = 220.00; // Default minimum price threshold
     let MAX_PRICE_THRESHOLD = 500.00; // Default maximum price threshold
     let MAX_CAPITAL = 1000.00; // Default maximum capital after 3 boxes
     const CHECK_INTERVAL = 500; // How often to check for items (milliseconds)
