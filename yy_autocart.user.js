@@ -22,9 +22,9 @@
     // Configuration
     let MIN_PRICE_THRESHOLD = 220.00; // Default minimum price threshold
     let MAX_PRICE_THRESHOLD = 500.00; // Default maximum price threshold
-    let MAX_CAPITAL = 1000.00; // Default maximum capital after 3 boxes
+    let MAX_CAPITAL = 1000000.00; // Default maximum capital after 3 boxes
     const CHECK_INTERVAL = 500; // How often to check for items (milliseconds)
-    const MAX_BOXES_TO_ADD = 3; // Maximum number of boxes to add to cart
+    const MAX_BOXES_TO_ADD = 3000; // Maximum number of boxes to add to cart
 
     // Global variables
     let attemptingPurchase = false;
