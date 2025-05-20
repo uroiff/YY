@@ -5,7 +5,14 @@
 // @description  Automatically find and purchase Harmony Boxes above a specified price threshold
 // @author   	You
 // @match    	*://*.yiya.gg/*
-// @grant    	none
+// @grant        GM_addStyle
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @downloadURL  https://github.com/trungduy17/telebot/raw/main/yy_autojoin.user.js
+// @updateURL    https://github.com/trungduy17/telebot/raw/main/yy_autojoin.user.js
+// @grant        GM.xmlHttpRequest
+// @grant        GM.registerMenuCommand
+// @run-at       document-start
 // ==/UserScript==
 
 (function() {
