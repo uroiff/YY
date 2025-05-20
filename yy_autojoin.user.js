@@ -171,8 +171,8 @@
 
     // Default time windows
     const DEFAULT_TIME_WINDOWS = [
-        { enabled: true, start: '10:30', end: '11:30' },
-        { enabled: true, start: '15:30', end: '16:30' }
+        { enabled: true, start: '10:28', end: '11:30' },
+        { enabled: true, start: '15:28', end: '16:30' }
     ];
 
     // State variables
