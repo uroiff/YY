@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name     	Harmony Box Auto-Purchase
 // @namespace	http://tampermonkey.net/
-// @version  	5.0
-// @description  Automatically find and purchase Harmony Boxes above a specified price threshold
+// @version  	6.0
+// @description  Automatically find and purchase Harmony Boxes between specified price thresholds
 // @author   	You
 // @match    	*://*.yiya.gg/*
 // @grant        GM_addStyle
@@ -20,6 +20,7 @@
 
 	// Configuration
 	let MIN_PRICE_THRESHOLD = 200.00; // Default minimum price threshold
+	let MAX_PRICE_THRESHOLD = 500.00; // Default maximum price threshold
 	const CHECK_INTERVAL = 500; // How often to check for items (milliseconds)
 
 	// Global variables
@@ -32,14 +33,20 @@
 
 	// Save settings to localStorage
 	function saveSettings() {
-    	localStorage.setItem('harmonyBotThreshold', MIN_PRICE_THRESHOLD);
+    	localStorage.setItem('harmonyBotMinThreshold', MIN_PRICE_THRESHOLD);
+    	localStorage.setItem('harmonyBotMaxThreshold', MAX_PRICE_THRESHOLD);
 	}
 
 	// Load settings from localStorage
 	function loadSettings() {
-    	const savedThreshold = localStorage.getItem('harmonyBotThreshold');
-    	if (savedThreshold !== null) {
-        	MIN_PRICE_THRESHOLD = parseFloat(savedThreshold);
+    	const savedMinThreshold = localStorage.getItem('harmonyBotMinThreshold');
+    	if (savedMinThreshold !== null) {
+        	MIN_PRICE_THRESHOLD = parseFloat(savedMinThreshold);
+    	}
+    	
+    	const savedMaxThreshold = localStorage.getItem('harmonyBotMaxThreshold');
+    	if (savedMaxThreshold !== null) {
+        	MAX_PRICE_THRESHOLD = parseFloat(savedMaxThreshold);
     	}
 	}
 
@@ -51,19 +58,19 @@
     	// Reset popup retry counter whenever we start a new purchase attempt
     	popupRetryCount = 0;
 
-    	console.log("Scanning for Harmony boxes above threshold...");
-    	updateStatus(`Scanning for boxes above ${MIN_PRICE_THRESHOLD}...`);
+    	console.log("Scanning for Harmony boxes within threshold range...");
+    	updateStatus(`Đang quét hộp từ ${MIN_PRICE_THRESHOLD} đến ${MAX_PRICE_THRESHOLD}...`);
 
     	// Step 1: Find all price elements on the page
     	const priceElements = document.querySelectorAll('.text-brand-primary.text-heading-14-bold');
 
     	if (priceElements.length === 0) {
         	console.log("No price elements found");
-        	updateStatus("No price elements found");
+        	updateStatus("Không tìm thấy thông tin giá");
         	return;
     	}
 
-    	// Find the maximum price above threshold and its associated element
+    	// Find the maximum price within threshold range and its associated element
     	let maxPrice = 0;
     	let maxPriceElement = null;
 
@@ -71,39 +78,39 @@
         	const priceText = element.textContent.trim();
         	const price = parseFloat(priceText);
 
-        	if (!isNaN(price) && price > MIN_PRICE_THRESHOLD && price > maxPrice) {
+        	if (!isNaN(price) && price >= MIN_PRICE_THRESHOLD && price <= MAX_PRICE_THRESHOLD && price > maxPrice) {
             	maxPrice = price;
             	maxPriceElement = element;
         	}
     	});
 
     	if (!maxPriceElement) {
-        	console.log(`No Harmony box found above the threshold of ${MIN_PRICE_THRESHOLD}`);
-        	updateStatus(`No box found above ${MIN_PRICE_THRESHOLD}`);
+        	console.log(`No Harmony box found within the threshold range of ${MIN_PRICE_THRESHOLD} - ${MAX_PRICE_THRESHOLD}`);
+        	updateStatus(`Không tìm thấy hộp trong khoảng ${MIN_PRICE_THRESHOLD} - ${MAX_PRICE_THRESHOLD}`);
         	return;
     	}
 
     	console.log(`Found Harmony box with price: ${maxPrice}`);
-    	updateStatus(`Found box with price: ${maxPrice}`);
+    	updateStatus(`Đã tìm thấy hộp giá: ${maxPrice}`);
 
     	// Find the closest "Add to Cart" button to this price element
     	const cardItem = maxPriceElement.closest('.card-item-buy');
     	if (!cardItem) {
         	console.log("Could not find the associated card item");
-        	updateStatus("Could not find the associated card item");
+        	updateStatus("Không tìm thấy thẻ sản phẩm");
         	return;
     	}
 
     	const addToCartButton = cardItem.querySelector('.btn-common--text');
     	if (!addToCartButton) {
         	console.log("Could not find Add to Cart button");
-        	updateStatus("Could not find Add to Cart button");
+        	updateStatus("Không tìm thấy nút thêm vào giỏ hàng");
         	return;
     	}
 
     	// Click the Add to Cart button
     	console.log("Clicking Add to Cart button...");
-    	updateStatus("Clicking Add to Cart button...");
+    	updateStatus("Đang nhấp nút thêm vào giỏ hàng...");
     	attemptingPurchase = true;
     	addToCartButton.click();
 
@@ -119,12 +126,12 @@
     	if (!popupAddToCartButton) {
         	popupRetryCount++;
         	console.log(`Popup Add to Cart button not found yet, retry attempt ${popupRetryCount} of 3...`);
-        	updateStatus(`Looking for popup button, attempt ${popupRetryCount}...`);
+        	updateStatus(`Đang tìm nút popup, lần thử ${popupRetryCount}...`);
 
         	if (popupRetryCount >= 2) {
             	// After 2 attempts, reset and return to the beginning
             	console.log("Failed to find popup button after 2 attempts. Resetting...");
-            	updateStatus("Failed to find popup button. Resetting...");
+            	updateStatus("Không tìm thấy nút popup. Đang đặt lại...");
             	attemptingPurchase = false;
             	return; // Return to the main loop instead of retrying
         	} else {
@@ -139,14 +146,14 @@
 
     	// Click the Add to Cart button in the popup
     	console.log("Clicking popup Add to Cart button...");
-    	updateStatus("Clicking popup Add to Cart button...");
+    	updateStatus("Đang nhấp nút thêm vào giỏ hàng trên popup...");
     	popupAddToCartButton.click();
 
     	// Reset the purchase attempt flag after a short delay
     	setTimeout(() => {
         	attemptingPurchase = false;
         	console.log("Purchase cycle completed, waiting for next scan");
-        	updateStatus("Purchase cycle completed, waiting for next scan");
+        	updateStatus("Chu kỳ mua hoàn tất, đang chờ lần quét tiếp theo");
     	}, 2000);
 	}
 
@@ -172,7 +179,7 @@
     	const minutes = Math.floor((elapsedTime % 3600) / 60);
     	const seconds = elapsedTime % 60;
 
-    	timerElement.textContent = `Running time: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    	timerElement.textContent = `Thời gian chạy: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 	}
 
 	// Function to start the bot
@@ -192,7 +199,7 @@
     	if (stopButton) stopButton.disabled = false;
 
     	console.log("Bot started");
-    	updateStatus("Bot active and scanning");
+    	updateStatus("Bot đang hoạt động và quét");
 	}
 
 	// Function to stop the bot
@@ -212,25 +219,33 @@
     	if (stopButton) stopButton.disabled = true;
 
     	console.log("Bot stopped");
-    	updateStatus("Bot stopped");
+    	updateStatus("Bot đã dừng");
 	}
 
-	// Function to save the threshold value
-	function saveThreshold() {
-    	const thresholdInput = document.getElementById('harmony-bot-threshold');
-    	if (!thresholdInput) return;
+	// Function to save the threshold values
+	function saveThresholds() {
+    	const minThresholdInput = document.getElementById('harmony-bot-min-threshold');
+    	const maxThresholdInput = document.getElementById('harmony-bot-max-threshold');
+    	
+    	if (!minThresholdInput || !maxThresholdInput) return;
 
-    	const newThreshold = parseFloat(thresholdInput.value);
-    	if (!isNaN(newThreshold) && newThreshold > 0) {
-        	MIN_PRICE_THRESHOLD = newThreshold;
+    	const newMinThreshold = parseFloat(minThresholdInput.value);
+    	const newMaxThreshold = parseFloat(maxThresholdInput.value);
+    	
+    	if (!isNaN(newMinThreshold) && !isNaN(newMaxThreshold) && 
+        	newMinThreshold > 0 && newMaxThreshold > 0 &&
+        	newMinThreshold < newMaxThreshold) {
+        	MIN_PRICE_THRESHOLD = newMinThreshold;
+        	MAX_PRICE_THRESHOLD = newMaxThreshold;
         	saveSettings();
-        	console.log(`Threshold updated to ${MIN_PRICE_THRESHOLD}`);
-        	updateStatus(`Threshold updated to ${MIN_PRICE_THRESHOLD}`);
+        	console.log(`Thresholds updated to ${MIN_PRICE_THRESHOLD} - ${MAX_PRICE_THRESHOLD}`);
+        	updateStatus(`Đã cập nhật khoảng giá: ${MIN_PRICE_THRESHOLD} - ${MAX_PRICE_THRESHOLD}`);
     	} else {
-        	console.log("Invalid threshold value");
-        	updateStatus("Invalid threshold value");
-        	// Reset input to current value
-        	thresholdInput.value = MIN_PRICE_THRESHOLD;
+        	console.log("Invalid threshold values");
+        	updateStatus("Giá trị không hợp lệ");
+        	// Reset inputs to current values
+        	minThresholdInput.value = MIN_PRICE_THRESHOLD;
+        	maxThresholdInput.value = MAX_PRICE_THRESHOLD;
     	}
 	}
 
@@ -257,42 +272,68 @@
     	title.style.fontSize = '16px';
     	title.style.marginBottom = '10px';
     	title.style.textAlign = 'center';
-    	title.textContent = 'YiYa AutoCart';
+    	title.textContent = 'YiYa Tự Động Mua Hàng';
     	controlPanel.appendChild(title);
 
-    	// Create threshold input section
+    	// Create threshold inputs section
     	const thresholdSection = document.createElement('div');
     	thresholdSection.style.marginBottom = '15px';
 
-    	const thresholdLabel = document.createElement('label');
-    	thresholdLabel.textContent = 'Price';
-    	thresholdLabel.style.display = 'block';
-    	thresholdLabel.style.marginBottom = '5px';
-    	thresholdLabel.style.color = '#ffffff';
-    	thresholdSection.appendChild(thresholdLabel);
+    	// Minimum price threshold
+    	const minThresholdLabel = document.createElement('label');
+    	minThresholdLabel.textContent = 'Giá tối thiểu';
+    	minThresholdLabel.style.display = 'block';
+    	minThresholdLabel.style.marginBottom = '5px';
+    	minThresholdLabel.style.color = '#ffffff';
+    	thresholdSection.appendChild(minThresholdLabel);
 
-    	// Create input field
-    	const thresholdInput = document.createElement('input');
-    	thresholdInput.id = 'harmony-bot-threshold';
-    	thresholdInput.type = 'number';
-    	thresholdInput.min = '0';
-    	thresholdInput.step = '0.01';
-    	thresholdInput.value = MIN_PRICE_THRESHOLD;
-    	thresholdInput.style.width = '100%';
-    	thresholdInput.style.padding = '5px';
-    	thresholdInput.style.borderRadius = '4px';
-    	thresholdInput.style.border = '1px solid #ccc';
-    	thresholdInput.style.backgroundColor = '#ffffff';
-    	thresholdInput.style.color = '#000000';
-    	thresholdInput.style.fontWeight = 'bold';
-    	thresholdInput.style.fontSize = '16px';
-    	thresholdInput.style.boxSizing = 'border-box';
-    	thresholdInput.style.marginBottom = '10px';
-    	thresholdSection.appendChild(thresholdInput);
+    	const minThresholdInput = document.createElement('input');
+    	minThresholdInput.id = 'harmony-bot-min-threshold';
+    	minThresholdInput.type = 'number';
+    	minThresholdInput.min = '0';
+    	minThresholdInput.step = '0.01';
+    	minThresholdInput.value = MIN_PRICE_THRESHOLD;
+    	minThresholdInput.style.width = '100%';
+    	minThresholdInput.style.padding = '5px';
+    	minThresholdInput.style.borderRadius = '4px';
+    	minThresholdInput.style.border = '1px solid #ccc';
+    	minThresholdInput.style.backgroundColor = '#ffffff';
+    	minThresholdInput.style.color = '#000000';
+    	minThresholdInput.style.fontWeight = 'bold';
+    	minThresholdInput.style.fontSize = '16px';
+    	minThresholdInput.style.boxSizing = 'border-box';
+    	minThresholdInput.style.marginBottom = '10px';
+    	thresholdSection.appendChild(minThresholdInput);
 
-    	// Create save button below input field
+    	// Maximum price threshold
+    	const maxThresholdLabel = document.createElement('label');
+    	maxThresholdLabel.textContent = 'Giá tối đa';
+    	maxThresholdLabel.style.display = 'block';
+    	maxThresholdLabel.style.marginBottom = '5px';
+    	maxThresholdLabel.style.color = '#ffffff';
+    	thresholdSection.appendChild(maxThresholdLabel);
+
+    	const maxThresholdInput = document.createElement('input');
+    	maxThresholdInput.id = 'harmony-bot-max-threshold';
+    	maxThresholdInput.type = 'number';
+    	maxThresholdInput.min = '0';
+    	maxThresholdInput.step = '0.01';
+    	maxThresholdInput.value = MAX_PRICE_THRESHOLD;
+    	maxThresholdInput.style.width = '100%';
+    	maxThresholdInput.style.padding = '5px';
+    	maxThresholdInput.style.borderRadius = '4px';
+    	maxThresholdInput.style.border = '1px solid #ccc';
+    	maxThresholdInput.style.backgroundColor = '#ffffff';
+    	maxThresholdInput.style.color = '#000000';
+    	maxThresholdInput.style.fontWeight = 'bold';
+    	maxThresholdInput.style.fontSize = '16px';
+    	maxThresholdInput.style.boxSizing = 'border-box';
+    	maxThresholdInput.style.marginBottom = '10px';
+    	thresholdSection.appendChild(maxThresholdInput);
+
+    	// Create save button below input fields
     	const saveButton = document.createElement('button');
-    	saveButton.textContent = 'Save';
+    	saveButton.textContent = 'Lưu';
     	saveButton.style.width = '100%';
     	saveButton.style.padding = '8px';
     	saveButton.style.backgroundColor = '#2196F3'; // Blue color
@@ -301,7 +342,7 @@
     	saveButton.style.borderRadius = '4px';
     	saveButton.style.cursor = 'pointer';
     	saveButton.style.marginBottom = '15px';
-    	saveButton.addEventListener('click', saveThreshold);
+    	saveButton.addEventListener('click', saveThresholds);
     	thresholdSection.appendChild(saveButton);
 
     	controlPanel.appendChild(thresholdSection);
@@ -315,7 +356,7 @@
 
     	const startButton = document.createElement('button');
     	startButton.id = 'harmony-bot-start';
-    	startButton.textContent = 'Start Bot';
+    	startButton.textContent = 'Bắt Đầu';
     	startButton.style.flex = '1';
     	startButton.style.padding = '8px';
     	startButton.style.backgroundColor = '#4CAF50';
@@ -328,7 +369,7 @@
 
     	const stopButton = document.createElement('button');
     	stopButton.id = 'harmony-bot-stop';
-    	stopButton.textContent = 'Stop Bot';
+    	stopButton.textContent = 'Dừng Lại';
     	stopButton.style.flex = '1';
     	stopButton.style.padding = '8px';
     	stopButton.style.backgroundColor = '#f44336';
@@ -345,7 +386,7 @@
     	// Create timer display
     	const timer = document.createElement('div');
     	timer.id = 'harmony-bot-timer';
-    	timer.textContent = 'Running time: 00:00:00';
+    	timer.textContent = 'Thời gian chạy: 00:00:00';
     	timer.style.marginBottom = '10px';
     	timer.style.textAlign = 'center';
     	timer.style.fontSize = '14px';
@@ -354,7 +395,7 @@
     	// Create status display
     	const status = document.createElement('div');
     	status.id = 'harmony-bot-status';
-    	status.textContent = 'Bot inactive';
+    	status.textContent = 'Bot không hoạt động';
     	status.style.textAlign = 'center';
     	status.style.padding = '10px';
     	status.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
@@ -429,7 +470,7 @@
     	// Create the control panel
     	createControlPanel();
 
-    	console.log(`Default threshold set to ${MIN_PRICE_THRESHOLD}`);
+    	console.log(`Default thresholds set to ${MIN_PRICE_THRESHOLD} - ${MAX_PRICE_THRESHOLD}`);
 	}
 
 	// Wait for the page to fully load before initializing
