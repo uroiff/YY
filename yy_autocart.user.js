@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     	Harmony Box Auto-Purchase
 // @namespace	http://tampermonkey.net/
-// @version  	7.0
+// @version  	1.1
 // @description Automatically find and purchase Harmony Boxes between specified price thresholds
 // @author   	You
 // @match    	*://*.yiya.gg/*
