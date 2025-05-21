@@ -2,14 +2,14 @@
 // @name     	Harmony Box Auto-Purchase
 // @namespace	http://tampermonkey.net/
 // @version  	7.0
-// @description  Automatically find and purchase Harmony Boxes between specified price thresholds
+// @description Automatically find and purchase Harmony Boxes between specified price thresholds
 // @author   	You
 // @match    	*://*.yiya.gg/*
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @downloadURL  https://github.com/trungduy17/telebot/raw/main/yy_autojoin.user.js
-// @updateURL    https://github.com/trungduy17/telebot/raw/main/yy_autojoin.user.js
+// @downloadURL  https://github.com/trungduy17/telebot/raw/main/yy_autocart.user.js
+// @updateURL    https://github.com/trungduy17/telebot/raw/main/yy_autocart.user.js
 // @grant        GM.xmlHttpRequest
 // @grant        GM.registerMenuCommand
 // @run-at       document-start
