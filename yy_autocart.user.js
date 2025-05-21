@@ -8,8 +8,8 @@
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @downloadURL  https://github.com/trungduy17/telebot/raw/main/yy_autocart.user.js
-// @updateURL    https://github.com/trungduy17/telebot/raw/main/yy_autocart.user.js
+// @downloadURL  https://github.com/uroiff/YY/raw/refs/heads/main/yy_autocart.user.js
+// @updateURL    https://github.com/uroiff/YY/raw/refs/heads/main/yy_autocart.user.js
 // @grant        GM.xmlHttpRequest
 // @grant        GM.registerMenuCommand
 // @run-at       document-start
