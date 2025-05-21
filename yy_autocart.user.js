@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     	Harmony Box Auto-Purchase
 // @namespace	http://tampermonkey.net/
-// @version  	6.0
+// @version  	7.0
 // @description  Automatically find and purchase Harmony Boxes between specified price thresholds
 // @author   	You
 // @match    	*://*.yiya.gg/*
@@ -30,11 +30,14 @@
 	let checkInterval = null; // Store interval ID for start/stop functionality
 	let startTime = null; // To track when the bot was started
 	let timerInterval = null; // For updating the timer display
+	let panelMinimized = false; // Track panel minimize state
+	let statusBlinkInterval = null; // For blinking status indicator
 
 	// Save settings to localStorage
 	function saveSettings() {
     	localStorage.setItem('harmonyBotMinThreshold', MIN_PRICE_THRESHOLD);
     	localStorage.setItem('harmonyBotMaxThreshold', MAX_PRICE_THRESHOLD);
+    	localStorage.setItem('harmonyBotMinimized', panelMinimized);
 	}
 
 	// Load settings from localStorage
@@ -43,10 +46,15 @@
     	if (savedMinThreshold !== null) {
         	MIN_PRICE_THRESHOLD = parseFloat(savedMinThreshold);
     	}
-    	
+
     	const savedMaxThreshold = localStorage.getItem('harmonyBotMaxThreshold');
     	if (savedMaxThreshold !== null) {
         	MAX_PRICE_THRESHOLD = parseFloat(savedMaxThreshold);
+    	}
+
+    	const savedMinimizedState = localStorage.getItem('harmonyBotMinimized');
+    	if (savedMinimizedState !== null) {
+        	panelMinimized = savedMinimizedState === 'true';
     	}
 	}
 
@@ -198,6 +206,9 @@
     	if (startButton) startButton.disabled = true;
     	if (stopButton) stopButton.disabled = false;
 
+    	// Update status indicator
+    	updateStatusIndicator();
+
     	console.log("Bot started");
     	updateStatus("Bot đang hoạt động và quét");
 	}
@@ -218,6 +229,9 @@
     	if (startButton) startButton.disabled = false;
     	if (stopButton) stopButton.disabled = true;
 
+    	// Update status indicator
+    	updateStatusIndicator();
+
     	console.log("Bot stopped");
     	updateStatus("Bot đã dừng");
 	}
@@ -226,13 +240,13 @@
 	function saveThresholds() {
     	const minThresholdInput = document.getElementById('harmony-bot-min-threshold');
     	const maxThresholdInput = document.getElementById('harmony-bot-max-threshold');
-    	
+
     	if (!minThresholdInput || !maxThresholdInput) return;
 
     	const newMinThreshold = parseFloat(minThresholdInput.value);
     	const newMaxThreshold = parseFloat(maxThresholdInput.value);
-    	
-    	if (!isNaN(newMinThreshold) && !isNaN(newMaxThreshold) && 
+
+    	if (!isNaN(newMinThreshold) && !isNaN(newMaxThreshold) &&
         	newMinThreshold > 0 && newMaxThreshold > 0 &&
         	newMinThreshold < newMaxThreshold) {
         	MIN_PRICE_THRESHOLD = newMinThreshold;
@@ -247,6 +261,60 @@
         	minThresholdInput.value = MIN_PRICE_THRESHOLD;
         	maxThresholdInput.value = MAX_PRICE_THRESHOLD;
     	}
+	}
+
+	// Function to minimize the control panel
+	function minimizePanel() {
+    	const controlPanel = document.getElementById('harmony-bot-panel');
+    	const minimizeButton = document.getElementById('harmony-bot-minimize');
+    	const panelContent = document.getElementById('harmony-bot-content');
+    	const restoreButton = document.getElementById('harmony-bot-restore');
+
+    	if (!controlPanel || !minimizeButton || !panelContent || !restoreButton) return;
+
+    	// Hide the panel content and minimize button
+    	panelContent.style.display = 'none';
+    	minimizeButton.style.display = 'none';
+
+    	// Show the restore button
+    	restoreButton.style.display = 'block';
+
+    	// Reduce the panel size
+    	controlPanel.style.width = '40px';
+    	controlPanel.style.height = '40px';
+
+    	// Update the minimized state
+    	panelMinimized = true;
+    	saveSettings();
+
+    	console.log("Panel minimized");
+	}
+
+	// Function to restore the control panel
+	function restorePanel() {
+    	const controlPanel = document.getElementById('harmony-bot-panel');
+    	const minimizeButton = document.getElementById('harmony-bot-minimize');
+    	const panelContent = document.getElementById('harmony-bot-content');
+    	const restoreButton = document.getElementById('harmony-bot-restore');
+
+    	if (!controlPanel || !minimizeButton || !panelContent || !restoreButton) return;
+
+    	// Show the panel content and minimize button
+    	panelContent.style.display = 'block';
+    	minimizeButton.style.display = 'block';
+
+    	// Hide the restore button
+    	restoreButton.style.display = 'none';
+
+    	// Restore the panel size
+    	controlPanel.style.width = '250px';
+    	controlPanel.style.height = 'auto';
+
+    	// Update the minimized state
+    	panelMinimized = false;
+    	saveSettings();
+
+    	console.log("Panel restored");
 	}
 
 	// Create and add the control panel to the page
@@ -265,15 +333,60 @@
     	controlPanel.style.width = '250px';
     	controlPanel.style.fontFamily = 'Arial, sans-serif';
     	controlPanel.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+    	controlPanel.style.transition = 'width 0.3s, height 0.3s'; // Add smooth transition
+
+    	// Create header with title and minimize button
+    	const header = document.createElement('div');
+    	header.style.display = 'flex';
+    	header.style.justifyContent = 'space-between';
+    	header.style.alignItems = 'center';
+    	header.style.marginBottom = '10px';
 
     	// Create the title
     	const title = document.createElement('div');
     	title.style.fontWeight = 'bold';
     	title.style.fontSize = '16px';
-    	title.style.marginBottom = '10px';
-    	title.style.textAlign = 'center';
     	title.textContent = 'YiYa Tự Động Mua Hàng';
-    	controlPanel.appendChild(title);
+    	header.appendChild(title);
+
+    	// Create minimize button
+    	const minimizeButton = document.createElement('button');
+    	minimizeButton.id = 'harmony-bot-minimize';
+    	minimizeButton.innerHTML = '&#8722;'; // Minus symbol
+    	minimizeButton.style.background = 'transparent';
+    	minimizeButton.style.border = 'none';
+    	minimizeButton.style.color = '#ffffff';
+    	minimizeButton.style.fontSize = '20px';
+    	minimizeButton.style.cursor = 'pointer';
+    	minimizeButton.style.padding = '0 5px';
+    	minimizeButton.title = 'Thu nhỏ';
+    	minimizeButton.addEventListener('click', minimizePanel);
+    	header.appendChild(minimizeButton);
+
+    	controlPanel.appendChild(header);
+
+    	// Create restore button (initially hidden)
+    	const restoreButton = document.createElement('button');
+    	restoreButton.id = 'harmony-bot-restore';
+    	restoreButton.innerHTML = '&#43;'; // Plus symbol
+    	restoreButton.style.background = 'transparent';
+    	restoreButton.style.border = 'none';
+    	restoreButton.style.color = '#ffffff';
+    	restoreButton.style.fontSize = '20px';
+    	restoreButton.style.cursor = 'pointer';
+    	restoreButton.style.padding = '0';
+    	restoreButton.style.position = 'absolute';
+    	restoreButton.style.top = '50%';
+    	restoreButton.style.left = '50%';
+    	restoreButton.style.transform = 'translate(-50%, -50%)';
+    	restoreButton.style.display = 'none';
+    	restoreButton.title = 'Mở rộng';
+    	restoreButton.addEventListener('click', restorePanel);
+    	controlPanel.appendChild(restoreButton);
+
+    	// Create content container
+    	const contentContainer = document.createElement('div');
+    	contentContainer.id = 'harmony-bot-content';
 
     	// Create threshold inputs section
     	const thresholdSection = document.createElement('div');
@@ -345,7 +458,7 @@
     	saveButton.addEventListener('click', saveThresholds);
     	thresholdSection.appendChild(saveButton);
 
-    	controlPanel.appendChild(thresholdSection);
+    	contentContainer.appendChild(thresholdSection);
 
     	// Create start/stop buttons
     	const buttonSection = document.createElement('div');
@@ -381,7 +494,7 @@
     	stopButton.addEventListener('click', stopBot);
     	buttonSection.appendChild(stopButton);
 
-    	controlPanel.appendChild(buttonSection);
+    	contentContainer.appendChild(buttonSection);
 
     	// Create timer display
     	const timer = document.createElement('div');
@@ -390,7 +503,7 @@
     	timer.style.marginBottom = '10px';
     	timer.style.textAlign = 'center';
     	timer.style.fontSize = '14px';
-    	controlPanel.appendChild(timer);
+    	contentContainer.appendChild(timer);
 
     	// Create status display
     	const status = document.createElement('div');
@@ -401,7 +514,7 @@
     	status.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
     	status.style.borderRadius = '4px';
     	status.style.fontSize = '14px';
-    	controlPanel.appendChild(status);
+    	contentContainer.appendChild(status);
 
     	// Add a drag handle and make panel draggable
     	const dragHandle = document.createElement('div');
@@ -412,51 +525,57 @@
     	dragHandle.style.borderRadius = '5px';
     	dragHandle.style.margin = '0 auto';
     	dragHandle.style.marginTop = '10px';
-    	controlPanel.appendChild(dragHandle);
+    	contentContainer.appendChild(dragHandle);
+
+    	// Add content container to the panel
+    	controlPanel.appendChild(contentContainer);
 
     	// Add panel to the page
     	document.body.appendChild(controlPanel);
 
     	// Make the panel draggable
     	makeDraggable(controlPanel, dragHandle);
+
+    	// Apply minimized state if saved
+    	if (panelMinimized) {
+        	minimizePanel();
+    	}
 	}
 
-	// Function to make an element draggable
-	function makeDraggable(element, handle) {
-    	let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+	// Function to update bot status indicator
+	function updateStatusIndicator() {
+    	const statusIndicator = document.getElementById('harmony-bot-status-indicator');
+    	const minimizedStatusIndicator = document.getElementById('harmony-bot-minimized-status');
 
-    	handle.onmousedown = dragMouseDown;
+    	if (!statusIndicator || !minimizedStatusIndicator) return;
 
-    	function dragMouseDown(e) {
-        	e = e || window.event;
-        	e.preventDefault();
-        	// Get the initial mouse cursor position
-        	pos3 = e.clientX;
-        	pos4 = e.clientY;
-        	document.onmouseup = closeDragElement;
-        	// Call function whenever the cursor moves
-        	document.onmousemove = elementDrag;
-    	}
+    	if (botActive) {
+        	// Set green color for active bot
+        	statusIndicator.style.backgroundColor = '#4CAF50';
+        	minimizedStatusIndicator.style.backgroundColor = '#4CAF50';
 
-    	function elementDrag(e) {
-        	e = e || window.event;
-        	e.preventDefault();
-        	// Calculate the new cursor position
-        	pos1 = pos3 - e.clientX;
-        	pos2 = pos4 - e.clientY;
-        	pos3 = e.clientX;
-        	pos4 = e.clientY;
-        	// Set the element's new position
-        	element.style.top = (element.offsetTop - pos2) + "px";
-        	element.style.left = (element.offsetLeft - pos1) + "px";
-        	element.style.right = 'auto'; // Remove right positioning
-        	element.style.bottom = 'auto'; // Remove bottom positioning
-    	}
+        	// Create blinking effect
+        	if (statusBlinkInterval) clearInterval(statusBlinkInterval);
+        	statusBlinkInterval = setInterval(() => {
+            	const currentOpacity = parseFloat(statusIndicator.style.opacity);
+            	const newOpacity = currentOpacity === 1 ? 0.3 : 1;
+            	statusIndicator.style.opacity = newOpacity;
+            	minimizedStatusIndicator.style.opacity = newOpacity;
+        	}, 800);
+    	} else {
+        	// Set red color for inactive bot
+        	statusIndicator.style.backgroundColor = '#f44336';
+        	minimizedStatusIndicator.style.backgroundColor = '#f44336';
 
-    	function closeDragElement() {
-        	// Stop moving when mouse button is released
-        	document.onmouseup = null;
-        	document.onmousemove = null;
+        	// Stop blinking effect
+        	if (statusBlinkInterval) {
+            	clearInterval(statusBlinkInterval);
+            	statusBlinkInterval = null;
+        	}
+
+        	// Reset opacity
+        	statusIndicator.style.opacity = 1;
+        	minimizedStatusIndicator.style.opacity = 1;
     	}
 	}
 
