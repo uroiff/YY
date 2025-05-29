@@ -282,7 +282,7 @@
         const controlPanel = document.createElement('div');
         controlPanel.id = 'harmony-bot-panel';
         controlPanel.style.position = 'fixed';
-        controlPanel.style.bottom = '10px';
+        controlPanel.style.top = '10px';
         controlPanel.style.right = '10px';
         controlPanel.style.backgroundColor = 'rgba(40, 40, 40, 0.9)';
         controlPanel.style.color = '#fff';
@@ -316,6 +316,7 @@
         minimizeButton.style.fontSize = '40px';
         minimizeButton.style.cursor = 'pointer';
         minimizeButton.style.padding = '0 5px';
+        minimizeButton.style.margin = '-20px 0px';
         minimizeButton.title = 'Thu nhỏ';
         minimizeButton.addEventListener('click', minimizePanel);
         header.appendChild(minimizeButton);
@@ -348,7 +349,7 @@
         minimizedStatusIcon.style.position = 'absolute';
         minimizedStatusIcon.style.left = '50%';
         minimizedStatusIcon.style.transform = 'translateX(-50%)';
-        minimizedStatusIcon.style.top = '-30px'; // Positioned above centered restore button
+        minimizedStatusIcon.style.bottom = '-30px'; // Positioned above centered restore button
         minimizedStatusIcon.style.display = 'none';
         minimizedStatusIcon.style.transition = 'opacity 0.4s ease-in-out'; // For blink effect
         controlPanel.appendChild(minimizedStatusIcon);
