@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Harmony Box Auto-Purchase
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Automatically find and purchase Harmony Boxes between specified price thresholds with UI enhancements
 // @author       You
 // @match        *://*.yiya.gg/*
@@ -167,8 +167,8 @@
             if (botActive) {
                 icon.style.backgroundColor = 'green';
                 minimizedStatusBlinkInterval = setInterval(() => {
-                    icon.style.opacity = icon.style.opacity === '1' ? '0.3' : '1';
-                }, 800);
+                    icon.style.opacity = icon.style.opacity === '1' ? '0.2' : '1';
+                }, 500);
             } else {
                 icon.style.backgroundColor = 'red';
                 // Solid red, no blinking
@@ -313,7 +313,7 @@
         minimizeButton.style.background = 'transparent';
         minimizeButton.style.border = 'none';
         minimizeButton.style.color = '#ffffff';
-        minimizeButton.style.fontSize = '20px';
+        minimizeButton.style.fontSize = '40px';
         minimizeButton.style.cursor = 'pointer';
         minimizeButton.style.padding = '0 5px';
         minimizeButton.title = 'Thu nhỏ';
@@ -327,7 +327,7 @@
         restoreButton.style.background = 'transparent';
         restoreButton.style.border = 'none';
         restoreButton.style.color = '#ffffff';
-        restoreButton.style.fontSize = '20px';
+        restoreButton.style.fontSize = '40px';
         restoreButton.style.cursor = 'pointer';
         restoreButton.style.padding = '0';
         restoreButton.style.position = 'absolute';
@@ -342,13 +342,13 @@
         // Create minimized status icon (initially hidden)
         const minimizedStatusIcon = document.createElement('div');
         minimizedStatusIcon.id = 'harmony-bot-minimized-status-icon';
-        minimizedStatusIcon.style.width = '10px';
-        minimizedStatusIcon.style.height = '10px';
+        minimizedStatusIcon.style.width = '20px';
+        minimizedStatusIcon.style.height = '20px';
         minimizedStatusIcon.style.borderRadius = '50%';
         minimizedStatusIcon.style.position = 'absolute';
         minimizedStatusIcon.style.left = '50%';
         minimizedStatusIcon.style.transform = 'translateX(-50%)';
-        minimizedStatusIcon.style.top = '-20px'; // Positioned above centered restore button
+        minimizedStatusIcon.style.top = '-30px'; // Positioned above centered restore button
         minimizedStatusIcon.style.display = 'none';
         minimizedStatusIcon.style.transition = 'opacity 0.4s ease-in-out'; // For blink effect
         controlPanel.appendChild(minimizedStatusIcon);
